@@ -1,0 +1,93 @@
+Videoray Bootloader
+
+PREAMBLE:
+On all AVR mcu based devices (PRO4, PAM, etc.) VideoRay uses a simple bootloader.  This bootloader allows for simple field upgrades of firmware and provides mechanisms for device serialization and data storage.
+
+The bootloaded is based upon MegaLoad by Microsyl.  It communicates with a host via a serial connection, typically RS-485.
+
+The bootloader is located in the bootreagion of the MCU FLASH.  Upon device reset the MCU will begin execution of the bootloader.  
+
+The bootloader size is 1K words.
+
+
+
+
+
+COMMUNICATION PROTOCOL:
+The bootloader uses the following communication protocol, again based upon MegaLoad.
+
+Protocol:
+Target sends "$VRBL:"
+Target sends the first 32 bytes of EEPROM (this is device id information, see below)
+Target listens for a char until timeout.  Ignores it.
+Target sends a '>'
+Target listens for a '<' response
+    if timeout then target jumps STARTAPP (see below).
+Target receives 16 bytes, these must ether be all 0xAB or match the device serial number exactly.  
+    If the device serial number is less than 16 bytes, the remainder should be 0x0.
+    If the serial number does not match then the Target sends a '@' and jumps to STARTAPP (see below)
+Target sends '*' to indicate Serial Number match 
+Target sets Application Flag in eeprom to INVALID
+Target sends 5 bytes: (bytes are codes for various values)
+    PageSize
+    DeviceID
+    FLASHSIZE
+    BOOTSIZE
+    EEPROMSIZE
+Target listens for a char until timeout.  Ignores it.
+Target sends '!'
+Target loops until it gets 0xffff for a page address
+    Host sends 2 byte page number (NOTE: PAGE NUMBER 0,1,2... not an address) (MSB first)
+    Host sends PageByte/2 16-bit words (64 words or 128 bytes for atmega128)
+        words are sent LSB
+    Host sends checksum checksum is mod 8 sum (just add usigned chars)
+    Target sends '!' for ok page write or '@' for error.
+Target sets Application Flag in eeprom to VALID if no errors.
+STARTAPP:   
+    Target checks that a valid application is stored.  This is determined by a "Valid Application" flag in EEPROM
+    If the flag is set, then the bootloader will jump to to 0x0000.  otherwise it will perform a watchdog timeout 
+    inorder to reset.
+
+
+
+
+
+EEPROM DATA STRUCTURES (ATMEL AVR-128)
+The bootloader assumes a standard usage of data structures in EEPROM.  The first 32 bytes are allocated for 
+bootloader usage
+
+Standard EEPROM MemoryMap:
+EEPROM (4K separate Data Space)
+0x0000 - 0x001f BootloaderID Data
+  0000 -   0001 Bootoader Version   
+  0002 -   0003 Device Type
+  0004 -   0014 Serial Number   
+  001C -   001F Valid App Flag (0x60 0x0D 0xF0 0x0D)
+0x0020 - 0x03ff Hardware Config
+0x0400 - 0x0ffA Application DATA
+0x0ffc - 0x0fff Hardware Runtime
+
+
+Bootoader Version:
+This is the ordinal number of the bootloader version
+
+Device Type:
+This matches the standard videoray device type ID's
+
+Serial Number:
+This is a 16 byte ascii character string which represents the serial number.
+Serial numbers are generally of the form *YYSSS:
+where * is an arbitrary string designation,   YY is a two digit year code, and SSS is the sequence number.
+
+Valid App Flag: 
+This is used to mark a downloaded firmware app as valid.  If these locations equal 0xG00DF00D then 
+the application is considered valid and the bootloader will jump to 0x0000 on startup (after bootloader sequence)
+
+Hardware Config:
+This is where model specific hardware data is stored.   Typically this is data such as individual part versions in a multi-part device, such as a PRO4 sub.
+
+Application DATA:
+This is were application firmware may store it's data.  The data and dataformats are specific to the individual application firmware.
+
+Hardware Runtime:
+If implemented, this is where the device runtime is stored.  
