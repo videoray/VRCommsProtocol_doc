@@ -1,0 +1,28 @@
+PRO4 Hardware config
+
+
+Hardware Config is where model specific hardware data is stored.   Typically this is data such as individual part versions in a multi-part device, such as a PRO4 sub.
+
+This data is stored in EEPROM after the bootloader information at:
+0x0020 - 0x03ff Hardware Config
+
+
+The PRO4 Hardware Config has the following packed structure:
+uint32  DataStructVersionNumber
+char    BOARD_REV_CPU[32]
+char    BOARD_REV_POWER[32]
+char    BOARD_REV_DEPTH[32]
+char    BOARD_REV_CAMERA_IO[32]
+char    DEVICE_REV_CAMERA[32]
+char    DEVICE_REV_LIGHTS[32]
+char    DEVICE_REV_THRUSTER_HORIZ[32]
+char    DEVICE_REV_THRUSTER_VERT[32]
+
+The first 4 bytes are the structure revision number.
+
+This is essentially multiple fields of 32 characters each.  
+Each field provides a revision number
+for a component of the PRO4 ROV.
+
+
+
